@@ -1,18 +1,19 @@
-import type { UserRepository } from '@/repositories/user.repositories';
+import type { UserRepository } from '@/repositories/user.repository';
 import type { CreateUserInput, User } from '@/types/user';
 
-import { sequelize } from '@/db';
-import { userRepository } from '@/repositories/user.repositories';
+import { userRepository } from '@/repositories/user.repository';
 import { AuthUserRegisteredPayload, HttpError } from '@chatapp/common';
 import { UniqueConstraintError } from 'sequelize';
 import { publishUserCreatedEvent } from '@/messaging/event-publisher';
+import { logger } from '@/utils/logger';
 
-class UserService {
+export class UserService {
   constructor(private readonly repository: UserRepository) {}
 
   async getUserById(id: string): Promise<User> {
     const user = await this.repository.findById(id);
     if (!user) {
+      logger.warn({ userId: id }, 'User not found');
       throw new HttpError(404, 'User not found');
     }
     return user;
@@ -34,11 +35,15 @@ class UserService {
         updatedAt: user.updatedAt.toISOString(),
       });
 
+      logger.info({ userId: user.id }, 'User created');
+
       return user;
     } catch (error) {
       if (error instanceof UniqueConstraintError) {
+        logger.warn({ email: input.email }, 'Create user failed: email already exists');
         throw new HttpError(409, 'User already exists');
       }
+      logger.error({ err: error, email: input.email }, 'Create user failed');
       throw error;
     }
   }
@@ -69,6 +74,7 @@ class UserService {
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     });
+    logger.info({ userId: user.id }, 'User synced from auth.registered event');
     return user;
   }
 }

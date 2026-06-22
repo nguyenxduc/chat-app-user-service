@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @chatapp/common build
+      - run: pnpm --filter @chatapp/user-service lint
+
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @chatapp/common build
+      - run: pnpm --filter @chatapp/user-service typecheck
+      - run: pnpm --filter @chatapp/user-service test
+
+  e2e-test:
+    runs-on: ubuntu-latest
+    needs: [lint, unit-test]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: chatapp_user_service
+          POSTGRES_USER: chatapp_user
+          POSTGRES_PASSWORD: testpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U chatapp_user -d chatapp_user_service"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @chatapp/common build
+      - run: pnpm --filter @chatapp/user-service build
+      - run: pnpm --filter @chatapp/user-service test:e2e
