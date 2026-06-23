@@ -27,6 +27,7 @@ FROM deps AS builder
 # Copy source code
 COPY packages/common ./packages/common
 COPY services/user-service ./services/user-service
+COPY proto ./proto
 
 #Build commong packge first
 RUN pnpm --filter @chatapp/common build
@@ -58,9 +59,10 @@ COPY services/user-service/package.json ./services/user-service/
 # Install production dependencies only
 RUN pnpm install --frozen-lockfile --prod
 
-# Copy built artifcats from builder
+# Copy built artifacts from builder
 COPY --from=builder /app/packages/common/dist ./packages/common/dist
 COPY --from=builder /app/services/user-service/dist ./services/user-service/dist
+COPY --from=builder /app/proto ./proto
 
 # Change ownership to non(root)
 RUN chown -R nodeuser:nodejs /app
