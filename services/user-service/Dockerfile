@@ -71,9 +71,11 @@ USER nodeuser
 
 ENV NODE_ENV=production
 ENV USER_SERVICE_PORT=4001
+ENV OTEL_SERVICE_NAME=user-service
 
 EXPOSE 4001
+EXPOSE 9464
 
 WORKDIR /app/services/user-service
 
-CMD [ "node", "dist/index.js" ]
+CMD [ "node", "--import", "./dist/tracing.js", "dist/index.js" ]
