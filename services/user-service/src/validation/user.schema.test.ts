@@ -76,13 +76,16 @@ describe('searchUsersQuerySchema', () => {
     }
   });
 
-  // Documents existing bug (see refactor plan "known bugs" list): the `limit` field's
-  // .transform((value) => Number()) is missing its argument, so `limit` always becomes
-  // NaN, which always fails the subsequent .refine(Number.isInteger(...)) check. This
-  // means any caller who passes a `limit` value currently gets a validation error,
-  // regardless of the value. This test captures that CURRENT behavior — do not fix it here.
-  it('currently rejects any provided limit value due to a pre-existing transform bug (NaN)', () => {
+  it('coerces a numeric-string limit and accepts it within range', () => {
     const result = searchUsersQuerySchema.safeParse({ query: 'test', limit: '5' });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.limit).toBe(5);
+    }
+  });
+
+  it('rejects a limit outside the 1-25 range', () => {
+    expect(searchUsersQuerySchema.safeParse({ query: 'test', limit: '0' }).success).toBe(false);
+    expect(searchUsersQuerySchema.safeParse({ query: 'test', limit: '26' }).success).toBe(false);
   });
 });
